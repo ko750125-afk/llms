@@ -1,0 +1,32 @@
+{
+  "name": "llm-triple-view",
+  "version": "1.0.0",
+  "description": "ChatGPT / Gemini / Claude 3분할 + 동시 프롬프트 전송",
+  "author": "LLM Triple View",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.llm.tripleview",
+    "productName": "LLM Triple View",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js", "bar.html", "package.json", "build/icon.png"],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "LLM Triple View"
+    }
+  }
+}

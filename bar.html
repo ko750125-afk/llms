@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>통합 프롬프트 바</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    height: 100vh; padding: 12px 16px; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    background: linear-gradient(135deg, #12141f, #1c1f33); color: #e8eaf6;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .row { display: flex; gap: 10px; align-items: stretch; flex: 1; min-height: 0; }
+  textarea {
+    flex: 1; resize: none; padding: 10px 14px; font-size: 15px; color: #fff;
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 12px; outline: none; transition: border-color .2s, box-shadow .2s;
+  }
+  textarea:focus { border-color: #7c8cff; box-shadow: 0 0 0 3px rgba(124,140,255,.25); }
+  button {
+    border: 0; border-radius: 12px; padding: 0 22px; font-size: 15px; font-weight: 600;
+    cursor: pointer; color: #fff; transition: transform .15s, filter .15s;
+  }
+  button:hover { transform: translateY(-1px); filter: brightness(1.15); }
+  #send { background: linear-gradient(135deg, #6c7bff, #a266ff); }
+  #new, #reset, #move { background: rgba(255,255,255,.12); }
+  .meta { display: flex; gap: 16px; align-items: center; font-size: 13px; }
+  label { cursor: pointer; display: flex; gap: 5px; align-items: center; }
+  #status { margin-left: auto; color: #9fa8da; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <textarea id="prompt" placeholder="모든 LLM에 보낼 프롬프트를 입력하세요  (Enter: 전송 / Shift+Enter: 줄바꿈)" autofocus></textarea>
+    <button id="send">전송 ▶</button>
+    <button id="new">새 대화</button>
+    <button id="reset" title="창을 건드렸을 때 처음 3분할로 되돌립니다">3분할 복귀</button>
+    <button id="move" title="3분할 화면을 다음 모니터로 이동합니다">모니터 이동</button>
+  </div>
+  <div class="meta">
+    <label><input type="checkbox" class="t" checked> ChatGPT</label>
+    <label><input type="checkbox" class="t" checked> Gemini</label>
+    <label><input type="checkbox" class="t" checked> Claude</label>
+    <span id="status"></span>
+  </div>
+<script>
+  const $ = id => document.getElementById(id);
+  async function go() {
+    const text = $('prompt').value.trim();
+    if (!text) return;
+    const targets = [...document.querySelectorAll('.t')].map(c => c.checked);
+    $('status').textContent = '전송 중...';
+    const r = await window.api.send(text, targets);
+    const fail = Object.entries(r).filter(([, ok]) => !ok).map(([n]) => n);
+    $('status').textContent = fail.length ? `실패: ${fail.join(', ')} (로그인/입력창 확인)` : '전송 완료 ✔';
+    if (!fail.length) $('prompt').value = '';
+    $('prompt').focus();
+  }
+  $('send').onclick = go;
+  $('new').onclick = () => window.api.newChat();
+  $('reset').onclick = async () => { await window.api.resetLayout(); $('status').textContent = '3분할로 복귀했습니다'; };
+  $('move').onclick = async () => { await window.api.moveMonitor(); $('status').textContent = '모니터로 이동했습니다'; };
+  $('prompt').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); go(); }
+  });
+</script>
+</body>
+</html>
