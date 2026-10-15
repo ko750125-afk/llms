@@ -5,4 +5,6 @@ contextBridge.exposeInMainWorld('api', {
   newChat: () => ipcRenderer.send('new-chat'),
   resetLayout: () => ipcRenderer.invoke('reset-layout'),
   moveMonitor: () => ipcRenderer.invoke('move-monitor'),
+  minimizeAll: () => ipcRenderer.invoke('minimize-all'),
+  closeAll: () => ipcRenderer.invoke('close-all'),
 });

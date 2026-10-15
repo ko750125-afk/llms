@@ -23,7 +23,8 @@
   }
   button:hover { transform: translateY(-1px); filter: brightness(1.15); }
   #send { background: linear-gradient(135deg, #6c7bff, #a266ff); }
-  #new, #reset, #move { background: rgba(255,255,255,.12); }
+  #new, #reset, #move, #min, #close { background: rgba(255,255,255,.12); }
+  #close:hover { background: rgba(255, 75, 75, 0.6); }
   .meta { display: flex; gap: 16px; align-items: center; font-size: 13px; }
   label { cursor: pointer; display: flex; gap: 5px; align-items: center; }
   #status { margin-left: auto; color: #9fa8da; }
@@ -36,6 +37,8 @@
     <button id="new">새 대화</button>
     <button id="reset" title="창을 건드렸을 때 처음 3분할로 되돌립니다">3분할 복귀</button>
     <button id="move" title="3분할 화면을 다음 모니터로 이동합니다">모니터 이동</button>
+    <button id="min" title="모든 LLM 창과 입력창을 함께 작업표시줄로 내립니다">창 내리기 ─</button>
+    <button id="close" title="모든 LLM 창과 앱을 완전히 닫습니다">✕</button>
   </div>
   <div class="meta">
     <label><input type="checkbox" class="t" checked> ChatGPT</label>
@@ -60,6 +63,8 @@
   $('new').onclick = () => window.api.newChat();
   $('reset').onclick = async () => { await window.api.resetLayout(); $('status').textContent = '3분할로 복귀했습니다'; };
   $('move').onclick = async () => { await window.api.moveMonitor(); $('status').textContent = '모니터로 이동했습니다'; };
+  $('min').onclick = async () => { await window.api.minimizeAll(); };
+  $('close').onclick = async () => { await window.api.closeAll(); };
   $('prompt').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); go(); }
   });

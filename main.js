@@ -127,6 +127,52 @@ async function tileWindows(wa) {
   }
 }
 
+async function minimizeChromeWindows() {
+  const pages = await (listPages().catch(() => []));
+  for (const site of SITES) {
+    const page = pages.find(t => t.url.includes(site.host));
+    if (!page) continue;
+    try {
+      const s = await cdpSession(page.webSocketDebuggerUrl);
+      const w = await s.send('Browser.getWindowForTarget');
+      if (w.result?.windowId !== undefined) {
+        await s.send('Browser.setWindowBounds', { windowId: w.result.windowId, bounds: { windowState: 'minimized' } });
+      }
+      s.close();
+    } catch {}
+  }
+}
+
+async function restoreChromeWindows(wa) {
+  const pages = await (listPages().catch(() => []));
+  for (const site of SITES) {
+    const page = pages.find(t => t.url.includes(site.host));
+    if (!page) continue;
+    try {
+      const s = await cdpSession(page.webSocketDebuggerUrl);
+      const w = await s.send('Browser.getWindowForTarget');
+      if (w.result?.windowId !== undefined) {
+        await s.send('Browser.setWindowBounds', { windowId: w.result.windowId, bounds: { windowState: 'normal' } });
+      }
+      s.close();
+    } catch {}
+  }
+  if (wa) await tileWindows(wa).catch(() => {});
+}
+
+async function closeChromeWindows() {
+  const pages = await (listPages().catch(() => []));
+  for (const site of SITES) {
+    const page = pages.find(t => t.url.includes(site.host));
+    if (!page) continue;
+    try {
+      const s = await cdpSession(page.webSocketDebuggerUrl);
+      await s.send('Page.close');
+      s.close();
+    } catch {}
+  }
+}
+
 async function newChat() {
   for (const site of SITES) {
     const page = (await listPages()).find(t => t.url.includes(site.host));
@@ -147,10 +193,30 @@ app.whenReady().then(async () => {
     x: wa.x, y: wa.y + wa.height - BAR_HEIGHT, width: wa.width, height: BAR_HEIGHT,
     frame: false, resizable: false, alwaysOnTop: true, skipTaskbar: false,
     title: 'LLM 통합 프롬프트 바',
-    icon: path.join(__dirname, 'build', 'icon.png'),
+    icon: fs.existsSync(path.join(__dirname, 'build', 'icon.ico'))
+      ? path.join(__dirname, 'build', 'icon.ico')
+      : path.join(__dirname, 'build', 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js') },
   });
   bar.loadFile(path.join(__dirname, 'bar.html'));
+
+  // 공용 프롬프트 바 최소화/복원 시 크롬 창도 함께 내리고 올리기
+  let syncState = false;
+  bar.on('minimize', async () => {
+    if (syncState) return;
+    syncState = true;
+    await minimizeChromeWindows().catch(() => {});
+    syncState = false;
+  });
+  bar.on('restore', async () => {
+    if (syncState) return;
+    syncState = true;
+    await restoreChromeWindows(currentDisplay().workArea).catch(() => {});
+    syncState = false;
+  });
+  bar.on('close', async () => {
+    await closeChromeWindows().catch(() => {});
+  });
 
   if (!chrome) {
     bar.webContents.once('did-finish-load', () =>
@@ -213,6 +279,17 @@ app.whenReady().then(async () => {
     const idx = all.findIndex(d => d.id === cur.id);
     await layoutOn(all[(idx + 1) % all.length]);
     return all.length;
+  });
+  // 전체 최소화 (입력창 + 3개 LLM 창 함께 내리기)
+  ipcMain.handle('minimize-all', async () => {
+    await minimizeChromeWindows().catch(() => {});
+    bar.minimize();
+    return true;
+  });
+  // 전체 종료 (입력창 + 3개 LLM 창 함께 닫기)
+  ipcMain.handle('close-all', async () => {
+    await closeChromeWindows().catch(() => {});
+    app.quit();
   });
 
   // 시작: 이미 열린 창은 재사용하고, 없는 창만 열어 3분할 배치
