@@ -165,7 +165,29 @@ app.whenReady().then(async () => {
   const layoutOn = async d => { placeBar(d); await tileWindows(d.workArea); };
   const currentDisplay = () => screen.getDisplayMatching(bar.getBounds());
 
+  // 닫힌 창이 있으면 다시 열어 준다. 새로 연 창이 있으면 true 반환
+  const safePages = () => listPages().catch(() => []);
+  const ensureWindows = async () => {
+    const has = (pages, s) => pages.some(t => t.url.includes(s.host));
+    let pages = await safePages();
+    const missing = SITES.filter(s => !has(pages, s));
+    if (!missing.length) return false;
+    const d = currentDisplay();
+    const portWasDown = pages.length === 0 && !(await fetch(`http://127.0.0.1:${PORT}/json/version`).then(r => r.ok).catch(() => false));
+    missing.forEach(s => launchChrome(chrome, s, SITES.indexOf(s), d.workArea, d.scaleFactor));
+    if (portWasDown) await waitForDebugPort();
+    for (let n = 0; n < 20; n++) {
+      await sleep(500);
+      pages = await safePages();
+      if (SITES.every(s => has(pages, s))) break;
+    }
+    await sleep(1500); // 페이지 로딩 대기
+    await layoutOn(d).catch(() => {});
+    return true;
+  };
+
   ipcMain.handle('send-prompt', async (_e, { text, targets }) => {
+    await ensureWindows().catch(() => {});
     const results = {};
     await Promise.all(SITES.map(async (site, i) => {
       if (!targets[i]) return;
@@ -173,11 +195,19 @@ app.whenReady().then(async () => {
     }));
     return results;
   });
-  ipcMain.on('new-chat', () => newChat().catch(() => {}));
-  // 3분할 복귀: 입력창이 있는 모니터 기준으로 처음 상태로 되돌림
-  ipcMain.handle('reset-layout', async () => { await layoutOn(currentDisplay()); return true; });
+  ipcMain.on('new-chat', async () => {
+    const created = await ensureWindows().catch(() => false);
+    if (!created) await newChat().catch(() => {});
+  });
+  // 3분할 복귀: 입력창이 있는 모니터 기준으로 처음 상태로 되돌림 (닫힌 창은 다시 열기)
+  ipcMain.handle('reset-layout', async () => {
+    await ensureWindows().catch(() => {});
+    await layoutOn(currentDisplay());
+    return true;
+  });
   // 모니터 이동: 다음 모니터로 통째로 이동 (마지막 모니터 다음은 첫 모니터)
   ipcMain.handle('move-monitor', async () => {
+    await ensureWindows().catch(() => {});
     const all = screen.getAllDisplays().sort((a, b) => a.bounds.x - b.bounds.x || a.bounds.y - b.bounds.y);
     const cur = currentDisplay();
     const idx = all.findIndex(d => d.id === cur.id);
@@ -185,10 +215,9 @@ app.whenReady().then(async () => {
     return all.length;
   });
 
-  SITES.forEach((site, i) => launchChrome(chrome, site, i, wa, sf));
-  await waitForDebugPort();
-  // 이미 떠 있는 Chrome에 합류한 창은 위치 옵션이 무시되므로 직접 배치
-  for (let n = 0; n < 5; n++) { await sleep(1200); await tileWindows(wa).catch(() => {}); }
+  // 시작: 이미 열린 창은 재사용하고, 없는 창만 열어 3분할 배치
+  await ensureWindows().catch(() => {});
+  for (let n = 0; n < 3; n++) { await sleep(1000); await layoutOn(currentDisplay()).catch(() => {}); }
 });
 
 app.on('window-all-closed', () => app.quit());
