@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>CTR 환경 설정</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    height: 100vh; font-family: 'Segoe UI', 'Pretendard', 'Malgun Gothic', sans-serif;
+    background: #0d101d; color: #f8fafc; display: flex; flex-direction: column;
+    user-select: none; overflow: hidden;
+    border: 1.5px solid #ffffff; /* 창 전체 외곽 흰색 테두리 */
+  }
+
+  /* 커스텀 헤더 타이틀바 */
+  header {
+    height: 48px; background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1.5px solid #ffffff; /* 헤더 구분 흰색 테두리 */
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; -webkit-app-region: drag; flex-shrink: 0;
+  }
+  .tab-group {
+    display: flex; gap: 8px; -webkit-app-region: no-drag;
+  }
+  .tab-btn {
+    padding: 6px 14px; font-size: 13px; font-weight: 600; color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1.5px solid rgba(255, 255, 255, 0.5); /* 탭 기본 흰색 계열 테두리 */
+    border-radius: 7px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+    transition: all .15s ease;
+  }
+  .tab-btn:hover { color: #ffffff; background: rgba(255, 255, 255, 0.12); border-color: #ffffff; }
+  .tab-btn.active {
+    color: #ffffff; background: rgba(255, 255, 255, 0.18);
+    border: 2px solid #ffffff; /* 활성 탭 또렷한 흰색 테두리 */
+    font-weight: 700;
+  }
+  .win-controls {
+    display: flex; align-items: center; gap: 6px; -webkit-app-region: no-drag;
+  }
+  .btn-win {
+    width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; border: 1.5px solid #ffffff; /* 창 컨트롤 버튼 흰색 테두리 */
+    background: rgba(255, 255, 255, 0.05); color: #ffffff;
+    cursor: pointer; transition: all .15s; font-size: 13px; font-weight: 700;
+  }
+  .btn-win:hover { color: #0f172a; background: #ffffff; }
+  .btn-close:hover { background: #ef4444 !important; border-color: #ffffff !important; color: #fff !important; }
+
+  /* 메인 컨텐츠 영역 */
+  main {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 18px 22px;
+  }
+  .tab-panel {
+    display: none; flex-direction: column; gap: 16px; flex: 1; overflow: hidden;
+  }
+  .tab-panel.active { display: flex; }
+
+  /* 폼 카드 컨테이너 */
+  .card-box {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1.5px solid #ffffff; /* 상단 입력 카드 흰색 테두리 */
+    border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .form-row { display: flex; gap: 10px; align-items: center; }
+
+  input, textarea {
+    padding: 9px 12px; font-size: 13px; color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1.5px solid #ffffff; /* 입력창 및 텍스트창 흰색 테두리 */
+    border-radius: 7px; outline: none; font-family: inherit; transition: all .2s;
+  }
+  input::placeholder, textarea::placeholder {
+    color: #94a3b8;
+  }
+  input:focus, textarea:focus {
+    border-color: #ffffff; background: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4);
+  }
+  textarea { resize: none; line-height: 1.5; }
+
+  /* 버튼 공통 */
+  .btn-primary {
+    height: 38px; padding: 0 18px; font-size: 13px; font-weight: 700;
+    color: #ffffff; background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    border: 1.5px solid #ffffff; /* 등록/추가 액션 버튼 흰색 테두리 */
+    border-radius: 7px; cursor: pointer; white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); transition: all .15s;
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px); background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    box-shadow: 0 4px 14px rgba(255, 255, 255, 0.3);
+  }
+
+  /* 리스트 영역 */
+  .list-wrapper {
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+    padding-right: 4px;
+  }
+  .list-wrapper::-webkit-scrollbar { width: 7px; }
+  .list-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.35);
+    border: 1px solid #ffffff; /* 스크롤바 흰색 테두리 */
+    border-radius: 4px;
+  }
+
+  /* 개별 아이템 카드 */
+  .item-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1.5px solid #ffffff; /* 사이트 및 스킬 목록 카드 흰색 테두리 */
+    border-radius: 8px; padding: 12px 16px; display: flex; align-items: center;
+    justify-content: space-between; gap: 12px; transition: all .15s;
+  }
+  .item-card:hover {
+    background: rgba(255, 255, 255, 0.1); border-color: #ffffff;
+    box-shadow: 0 2px 10px rgba(255, 255, 255, 0.15);
+  }
+  .item-info { display: flex; flex-direction: column; gap: 4px; overflow: hidden; flex: 1; }
+  .item-title-row { display: flex; align-items: center; gap: 8px; }
+  .item-title { font-weight: 700; font-size: 14px; color: #ffffff; }
+  .item-sub { font-size: 12px; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .badge-cmd {
+    font-size: 11px; font-weight: 700; color: #ffffff; background: rgba(99, 102, 241, 0.3);
+    padding: 2px 8px; border-radius: 4px;
+    border: 1px solid #ffffff; /* 스킬 태그 뱃지 흰색 테두리 */
+  }
+
+  /* 액션 버튼 */
+  .item-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  .btn-del {
+    height: 30px; padding: 0 12px; font-size: 12px; font-weight: 700;
+    color: #fca5a5; background: rgba(239, 68, 68, 0.2);
+    border: 1.5px solid #ffffff; /* 삭제 버튼 흰색 테두리 */
+    border-radius: 6px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    transition: all .15s;
+  }
+  .btn-del:hover {
+    background: #ef4444; border-color: #ffffff; color: #ffffff;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.6);
+  }
+  .btn-edit {
+    height: 30px; padding: 0 12px; font-size: 12px; font-weight: 700;
+    color: #ffffff; background: rgba(255, 255, 255, 0.1);
+    border: 1.5px solid #ffffff; /* 수정 버튼 흰색 테두리 */
+    border-radius: 6px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    transition: all .15s;
+  }
+  .btn-edit:hover { background: #ffffff; color: #0f172a; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="tab-group">
+      <button id="tab-btn-sites" class="tab-btn active">🌐 사이트 바로가기</button>
+      <button id="tab-btn-skills" class="tab-btn">⚡ 스킬 문서 관리</button>
+    </div>
+    <div class="win-controls">
+      <button id="btn-max" class="btn-win" title="최대화">□</button>
+      <button id="btn-close" class="btn-win btn-close" title="닫기">✕</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- [탭 1] 사이트 관리 -->
+    <section id="tab-sites" class="tab-panel active">
+      <div class="card-box">
+        <div class="form-row">
+          <input id="site-name" placeholder="사이트명 (예: 네이버)" style="width: 160px;">
+          <input id="site-url" placeholder="URL (예: naver.com)" style="flex: 1;">
+          <button id="btn-add-site" class="btn-primary">+ 사이트 추가</button>
+        </div>
+      </div>
+      <div id="sites-list" class="list-wrapper"></div>
+    </section>
+
+    <!-- [탭 2] 스킬 문서 관리 -->
+    <section id="tab-skills" class="tab-panel">
+      <div class="card-box">
+        <div class="form-row">
+          <input id="skill-name" placeholder="스킬명 (예: 요약)" style="width: 260px;">
+          <button id="btn-save-skill" class="btn-primary" style="margin-left: auto;">+ 스킬 등록</button>
+        </div>
+        <textarea id="skill-content" rows="4" placeholder="스킬이 발동될 때 프롬프트에 주입할 본문 지시사항을 입력하세요.&#10;예: [지시사항] 다음 내용을 핵심 3줄로 명확하게 요약해 주세요."></textarea>
+      </div>
+      <div id="skills-list" class="list-wrapper"></div>
+    </section>
+  </main>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  // 탭 전환
+  $('tab-btn-sites').onclick = () => switchTab('sites');
+  $('tab-btn-skills').onclick = () => switchTab('skills');
+
+  function switchTab(tab) {
+    if (tab === 'sites') {
+      $('tab-btn-sites').classList.add('active');
+      $('tab-btn-skills').classList.remove('active');
+      $('tab-sites').classList.add('active');
+      $('tab-skills').classList.remove('active');
+    } else {
+      $('tab-btn-skills').classList.add('active');
+      $('tab-btn-sites').classList.remove('active');
+      $('tab-skills').classList.add('active');
+      $('tab-sites').classList.remove('active');
+    }
+  }
+
+  // 창 제어
+  $('btn-max').onclick = () => window.settingsApi.toggleMaximize();
+  $('btn-close').onclick = () => window.settingsApi.hide();
+
+  // ---- 사이트 정렬 로직 (영문 ABC -> 한글 가나다) ----
+  function sortSites(list) {
+    if (!Array.isArray(list)) return [];
+    return [...list].sort((a, b) => {
+      const nameA = (a.name || '').trim();
+      const nameB = (b.name || '').trim();
+      const isEng = s => /^[a-zA-Z]/.test(s);
+      const isKor = s => /^[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(s);
+      const aEng = isEng(nameA);
+      const bEng = isEng(nameB);
+      const aKor = isKor(nameA);
+      const bKor = isKor(nameB);
+
+      if (aEng && bEng) return nameA.localeCompare(nameB, 'en', { sensitivity: 'base' });
+      if (aEng && !bEng) return -1;
+      if (!aEng && bEng) return 1;
+      if (aKor && bKor) return nameA.localeCompare(nameB, 'ko');
+      if (aKor && !bKor) return -1;
+      if (!aKor && bKor) return 1;
+      return nameA.localeCompare(nameB);
+    });
+  }
+
+  // 사이트 렌더링
+  let currentSites = [];
+  async function loadSites() {
+    currentSites = await window.settingsApi.getSites();
+    renderSites();
+  }
+
+  function renderSites() {
+    const list = $('sites-list');
+    list.innerHTML = '';
+    const sorted = sortSites(currentSites);
+    sorted.forEach((site, index) => {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.innerHTML = `
+        <div class="item-info">
+          <div class="item-title-row">
+            <span class="item-title">${site.name}</span>
+          </div>
+          <span class="item-sub">${site.url}</span>
+        </div>
+        <div class="item-actions">
+          <button class="btn-del" data-index="${index}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            <span>삭제</span>
+          </button>
+        </div>
+      `;
+      card.querySelector('.btn-del').onclick = async () => {
+        if (confirm(`'${site.name}' 사이트를 정말 삭제하시겠습니까?`)) {
+          sorted.splice(index, 1);
+          currentSites = sorted;
+          await window.settingsApi.saveSites(currentSites);
+          renderSites();
+        }
+      };
+      list.appendChild(card);
+    });
+  }
+
+  // 사이트 추가
+  $('btn-add-site').onclick = async () => {
+    const name = $('site-name').value.trim();
+    const url = $('site-url').value.trim();
+    if (!name || !url) return;
+    currentSites.push({ name, url });
+    await window.settingsApi.saveSites(currentSites);
+    $('site-name').value = '';
+    $('site-url').value = '';
+    renderSites();
+  };
+
+  // ---- 스킬 문서 관리 (스킬명 하나만 사용, 스킬명이 곧 슬래시 키워드) ----
+  let currentSkills = [];
+  let editingSkillId = null;
+
+  async function loadSkills() {
+    currentSkills = await window.settingsApi.getSkills();
+    renderSkills();
+  }
+
+  function renderSkills() {
+    const list = $('skills-list');
+    list.innerHTML = '';
+    currentSkills.forEach((skill, index) => {
+      const skillName = (skill.name || skill.title || (skill.trigger || '').replace(/^\//, '')).trim();
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.innerHTML = `
+        <div class="item-info">
+          <div class="item-title-row">
+            <span class="item-title" style="color: #ffffff; font-weight: 700; font-size: 14px;">[ ${skillName} ]</span>
+          </div>
+          <span class="item-sub">${skill.content.replace(/\n/g, ' ')}</span>
+        </div>
+        <div class="item-actions">
+          <button class="btn-edit" data-index="${index}">수정</button>
+          <button class="btn-del" data-index="${index}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            <span>삭제</span>
+          </button>
+        </div>
+      `;
+      // 수정
+      card.querySelector('.btn-edit').onclick = () => {
+        editingSkillId = skill.id;
+        $('skill-name').value = skillName;
+        $('skill-content').value = skill.content;
+        $('btn-save-skill').textContent = '✔ 스킬 수정 완료';
+        $('skill-name').focus();
+      };
+      // 삭제
+      card.querySelector('.btn-del').onclick = async () => {
+        if (confirm(`'[ ${skillName} ]' 스킬을 정말 삭제하시겠습니까?`)) {
+          currentSkills.splice(index, 1);
+          await window.settingsApi.saveSkills(currentSkills);
+          renderSkills();
+        }
+      };
+      list.appendChild(card);
+    });
+  }
+
+  // 스킬 등록/수정 (스킬명 하나로 슬래시 키워드 자동 통일)
+  $('btn-save-skill').onclick = async () => {
+    const rawName = $('skill-name').value.trim();
+    const content = $('skill-content').value.trim();
+    if (!rawName || !content) {
+      alert('스킬명과 본문 지시사항을 입력해 주세요.');
+      return;
+    }
+    const cleanName = rawName.replace(/^\//, '').trim();
+    const trigger = '/' + cleanName;
+
+    if (editingSkillId) {
+      const target = currentSkills.find(s => s.id === editingSkillId);
+      if (target) {
+        target.name = cleanName;
+        target.title = cleanName;
+        target.trigger = trigger;
+        target.content = content;
+      }
+      editingSkillId = null;
+      $('btn-save-skill').textContent = '+ 스킬 등록';
+    } else {
+      currentSkills.push({
+        id: 'skill-' + Date.now(),
+        name: cleanName,
+        title: cleanName,
+        trigger: trigger,
+        content: content,
+      });
+    }
+
+    await window.settingsApi.saveSkills(currentSkills);
+    $('skill-name').value = '';
+    $('skill-content').value = '';
+    renderSkills();
+  };
+
+  // 초기 로드
+  loadSites();
+  loadSkills();
+</script>
+</body>
+</html>

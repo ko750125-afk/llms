@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>LLM 워크스페이스 메모장 & UI 스케치</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-dark: #0f111a;
+    --card-bg: #181b29;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+    --border: rgba(255, 255, 255, 0.1);
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+  }
+  body {
+    height: 100vh; font-family: 'Segoe UI', 'Pretendard', 'Malgun Gothic', sans-serif;
+    background-color: var(--bg-dark); color: var(--text-primary);
+    display: flex; flex-direction: column; overflow: hidden;
+    user-select: none;
+  }
+  
+  /* 헤더 & 창 제어 */
+  header {
+    height: 48px; background: #131622; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; -webkit-app-region: drag;
+  }
+  .header-left {
+    display: flex; align-items: center; gap: 12px; -webkit-app-region: no-drag;
+  }
+  .app-title {
+    font-size: 14px; font-weight: 700; color: #cbd5e1;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .header-right {
+    display: flex; align-items: center; gap: 8px; -webkit-app-region: no-drag;
+  }
+  .btn-close {
+    width: 32px; height: 32px; border-radius: 8px; border: none;
+    background: transparent; color: var(--text-secondary); cursor: pointer;
+    font-size: 16px; display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .btn-close:hover { background: rgba(239, 68, 68, 0.8); color: #fff; }
+
+  /* 탭 네비게이션 */
+  .tab-bar {
+    display: flex; background: rgba(0, 0, 0, 0.25); border-radius: 8px; padding: 3px;
+  }
+  .tab-item {
+    padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+    border-radius: 6px; border: none; background: transparent; color: var(--text-secondary);
+    display: flex; align-items: center; gap: 6px; transition: all .15s;
+  }
+  .tab-item.active {
+    background: var(--accent); color: #ffffff; box-shadow: 0 2px 6px rgba(99, 102, 241, 0.4);
+  }
+  .tab-item:not(.active):hover { color: #ffffff; background: rgba(255, 255, 255, 0.05); }
+
+  /* 메인 콘텐츠 영역 */
+  main {
+    flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden;
+  }
+  .tab-content {
+    display: none; flex: 1; flex-direction: column; height: 100%;
+  }
+  .tab-content.active { display: flex; }
+
+  /* 툴바 스타일 (공통) */
+  .sub-toolbar {
+    height: 48px; background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border); display: flex; align-items: center;
+    justify-content: space-between; padding: 0 16px; gap: 10px;
+  }
+  .tool-group { display: flex; align-items: center; gap: 6px; }
+  
+  .btn-tool {
+    height: 34px; padding: 0 12px; font-size: 12px; font-weight: 600;
+    border-radius: 7px; border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.07); color: #ffffff;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    transition: all .15s;
+  }
+  .btn-icon-only {
+    width: 34px; padding: 0; justify-content: center;
+  }
+  .btn-action-fixed {
+    width: 60px; padding: 0; justify-content: center; text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.2); color: #ffffff;
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .btn-tool:hover {
+    background: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.35);
+    color: #ffffff;
+  }
+  .btn-tool.active {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+  }
+
+  /* 1. 텍스트 메모 모드 */
+  .text-wrapper {
+    flex: 1; display: flex; flex-direction: column; padding: 14px 16px;
+  }
+  #text-editor {
+    flex: 1; width: 100%; resize: none; border: 1px solid var(--border);
+    border-radius: 8px; background: rgba(0, 0, 0, 0.25); color: #f8fafc;
+    padding: 16px; font-size: 15px; line-height: 1.6; outline: none;
+    font-family: 'Consolas', 'Segoe UI', 'Malgun Gothic', monospace;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  #text-editor:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  }
+
+  /* 2. 그림판(UI 스케치) 모드 */
+  .canvas-wrapper {
+    flex: 1; position: relative; background: #1e2235; overflow: hidden;
+    cursor: crosshair; display: flex; align-items: center; justify-content: center;
+  }
+  #draw-canvas {
+    background: #181b29; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    touch-action: none; display: block;
+  }
+  
+  /* 색상 피커 및 크기 선택기 */
+  .color-dot {
+    width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent;
+    cursor: pointer; transition: transform .15s;
+  }
+  .color-dot.active { transform: scale(1.25); border-color: #fff; }
+  .color-dot:hover { transform: scale(1.15); }
+  
+  .size-select {
+    background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border);
+    color: #fff; padding: 4px 8px; border-radius: 6px; font-size: 12px; outline: none;
+  }
+  .size-select option { background: #1a1d2d; color: #fff; }
+
+  /* 토스트 알림 */
+  #toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(50px);
+    background: rgba(15, 23, 42, 0.95); border: 1px solid #6366f1; color: #fff;
+    padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); pointer-events: none; opacity: 0;
+    transition: all .25s cubic-bezier(0.16, 1, 0.3, 1); z-index: 9999;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+  <!-- 헤더 & 창 드래그 & 모드 전환 -->
+  <header>
+    <div class="header-left">
+      <div class="tab-bar">
+        <button id="tab-text-btn" class="tab-item active">
+          <svg width="15" height="15" viewBox="0 0 24 24">
+            <text x="12" y="18" font-size="17" font-weight="900" text-anchor="middle" fill="currentColor">가</text>
+          </svg>
+          <span>Text</span>
+        </button>
+        <button id="tab-draw-btn" class="tab-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+            <path d="M2 2l7.586 7.586"></path>
+            <circle cx="11" cy="11" r="2"></circle>
+          </svg>
+          <span>Draw</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <!-- 전체화면/최대화 토글 버튼 (네모) -->
+      <button id="btn-max" class="btn-close" title="전체화면 (최대화)">
+        <svg id="max-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+        </svg>
+      </button>
+      <!-- 창 닫기 버튼 -->
+      <button id="btn-hide" class="btn-close" title="닫기">✕</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- [TAB 1] 텍스트 메모 모드 -->
+    <section id="tab-text" class="tab-content active">
+      <div class="sub-toolbar" style="justify-content: flex-end;">
+        <div class="tool-group">
+          <button id="btn-copy-text" class="btn-tool btn-action-fixed" title="텍스트를 클립보드에 복사">복사</button>
+          <button id="btn-save-text" class="btn-tool btn-action-fixed" title=".txt 파일로 저장">저장</button>
+          <button id="btn-send-to-ctrl" class="btn-tool btn-action-fixed" title="작성한 내용을 하단 CTR 프롬프트 바에 입력">전송</button>
+        </div>
+      </div>
+
+      <div class="text-wrapper">
+        <textarea id="text-editor" autofocus></textarea>
+      </div>
+    </section>
+
+    <!-- [TAB 2] UI 스케치 그림판 모드 -->
+    <section id="tab-draw" class="tab-content">
+      <div class="sub-toolbar">
+        <div class="tool-group">
+          <!-- 도구 선택 (펜 / 사각형 / 원형 / 화살표 / 지우개 - 텍스트 없이 아이콘만 표시) -->
+          <button id="tool-pen" class="btn-tool btn-icon-only active" title="자유 곡선 펜">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+              <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+              <path d="M2 2l7.586 7.586"></path>
+              <circle cx="11" cy="11" r="2"></circle>
+            </svg>
+          </button>
+          <button id="tool-rect" class="btn-tool btn-icon-only" title="UI 박스 (직사각형)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            </svg>
+          </button>
+          <button id="tool-circle" class="btn-tool btn-icon-only" title="원형 / 타원">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+            </svg>
+          </button>
+          <button id="tool-arrow" class="btn-tool btn-icon-only" title="화살표 그리기">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="7" y1="17" x2="17" y2="7"></line>
+              <polyline points="7 7 17 7 17 17"></polyline>
+            </svg>
+          </button>
+          <button id="tool-text" class="btn-tool btn-icon-only" title="텍스트 입력">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 7 4 4 20 4 20 7"></polyline>
+              <line x1="9" y1="20" x2="15" y2="20"></line>
+              <line x1="12" y1="4" x2="12" y2="20"></line>
+            </svg>
+          </button>
+          <button id="tool-eraser" class="btn-tool btn-icon-only" title="지우개">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 20H7L3 16C2 15 2 13 3 12L13 2L22 11L20 20Z"></path>
+              <line x1="18" y1="12" x2="11" y2="19"></line>
+            </svg>
+          </button>
+
+          <!-- 선 굵기 -->
+          <select id="line-size" class="size-select" title="선 굵기 / 글자 크기">
+            <option value="2">얇게 (2px / 14pt)</option>
+            <option value="4" selected>보통 (4px / 18pt)</option>
+            <option value="8">굵게 (8px / 24pt)</option>
+            <option value="16">매우 굵게 (16px / 32pt)</option>
+          </select>
+
+          <!-- 색상 팔레트 -->
+          <div style="display: flex; gap: 6px; align-items: center; margin-left: 6px;">
+            <div class="color-dot active" style="background: #ffffff;" data-color="#ffffff" title="흰색"></div>
+            <div class="color-dot" style="background: #38bdf8;" data-color="#38bdf8" title="스카이블루"></div>
+            <div class="color-dot" style="background: #4ade80;" data-color="#4ade80" title="네온그린"></div>
+            <div class="color-dot" style="background: #fbbf24;" data-color="#fbbf24" title="옐로우"></div>
+            <div class="color-dot" style="background: #f87171;" data-color="#f87171" title="코랄레드"></div>
+            <div class="color-dot" style="background: #181b29; border: 1px solid #475569;" data-color="#181b29" title="배경색"></div>
+          </div>
+        </div>
+
+        <div class="tool-group">
+          <!-- 실행 취소 (아이콘만) -->
+          <button id="btn-undo" class="btn-tool btn-icon-only" title="되돌리기 (Ctrl+Z)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7v6h6"></path>
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+            </svg>
+          </button>
+
+          <!-- 리셋 (아이콘 없이 reset) -->
+          <button id="btn-clear" class="btn-tool btn-action-fixed" title="캔버스 전체 지우기">reset</button>
+
+          <!-- 복사 -->
+          <button id="btn-copy-image" class="btn-tool btn-action-fixed" title="그림을 클립보드에 복사">복사</button>
+
+          <!-- 저장 -->
+          <button id="btn-save-image" class="btn-tool btn-action-fixed" title=".png 이미지 파일로 저장">저장</button>
+
+          <!-- 전송 -->
+          <button id="btn-send-draw-to-ctrl" class="btn-tool btn-action-fixed" title="스케치를 클립보드에 복사하고 CTR로 전달">전송</button>
+        </div>
+      </div>
+
+      <div class="canvas-wrapper" id="canvas-container">
+        <canvas id="draw-canvas"></canvas>
+
+        <!-- 드래그 가능한 텍스트 박스 컴포넌트 (배경 100% 투명, 뒤쪽 스케치 투과) -->
+        <div id="canvas-text-box" style="
+          position: absolute;
+          display: none;
+          z-index: 100;
+          border-radius: 4px;
+          border: 1.5px dashed rgba(99, 102, 241, 0.9);
+          background: transparent;
+          min-width: 150px;
+        ">
+          <!-- 상단 드래그 핸들 바 (반투명 인디고: 뒤쪽 선이 훤히 비치도록 투명화) -->
+          <div id="text-drag-handle" style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(99, 102, 241, 0.4);
+            border-bottom: 1px dashed rgba(99, 102, 241, 0.7);
+            color: #ffffff;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            border-radius: 3px 3px 0 0;
+            cursor: grab;
+            user-select: none;
+            backdrop-filter: blur(1px);
+          ">
+            <span style="display: flex; align-items: center; gap: 4px; pointer-events: none;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="5 9 2 12 5 15"></polyline>
+                <polyline points="9 5 12 2 15 5"></polyline>
+                <polyline points="15 19 12 22 9 19"></polyline>
+                <polyline points="19 9 22 12 19 15"></polyline>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <line x1="12" y1="2" x2="12" y2="22"></line>
+              </svg>
+              드래그하여 이동
+            </span>
+            <div style="display: flex; gap: 6px;">
+              <button id="btn-text-apply" title="캔버스에 확정 (Enter)" style="background: none; border: none; color: #fff; cursor: pointer; font-size: 12px; font-weight: 800; padding: 0 2px;">✔</button>
+              <button id="btn-text-close" title="취소 (Esc)" style="background: none; border: none; color: #fff; cursor: pointer; font-size: 12px; font-weight: 800; padding: 0 2px;">✕</button>
+            </div>
+          </div>
+          <!-- 텍스트 입력 영역 (완전 투명 배경, 선명한 글자) -->
+          <textarea id="canvas-text-input" placeholder="텍스트 입력" style="
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #ffffff;
+            caret-color: #6366f1;
+            font-family: 'Segoe UI', 'Pretendard', sans-serif;
+            font-weight: 600;
+            padding: 4px 6px;
+            resize: none;
+            overflow: hidden;
+            display: block;
+            min-height: 34px;
+            box-sizing: border-box;
+          "></textarea>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast">✔ 알림 메시지</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  // 토스트 메시지
+  function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // 창 닫기
+  $('btn-hide').onclick = () => window.notepadApi.hide();
+
+  // 창 전체화면(최대화)/복원 토글
+  const btnMax = $('btn-max');
+  const maxIcon = $('max-icon');
+  btnMax.onclick = async () => {
+    const isMax = await window.notepadApi.toggleMaximize();
+    if (isMax) {
+      // 복원 아이콘 (이중 사각형)
+      maxIcon.innerHTML = '<rect x="8" y="3" width="13" height="13" rx="1.5"></rect><path d="M4 8H3a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-1"></path>';
+      btnMax.title = '이전 크기로 복원';
+    } else {
+      // 최대화 아이콘 (단일 사각형 네모)
+      maxIcon.innerHTML = '<rect x="3" y="3" width="18" height="18" rx="2"></rect>';
+      btnMax.title = '전체화면 (최대화)';
+    }
+    setTimeout(initCanvasSize, 120);
+  };
+
+  // 탭 전환
+  const tabTextBtn = $('tab-text-btn');
+  const tabDrawBtn = $('tab-draw-btn');
+  const tabText = $('tab-text');
+  const tabDraw = $('tab-draw');
+
+  tabTextBtn.onclick = () => {
+    tabTextBtn.classList.add('active');
+    tabDrawBtn.classList.remove('active');
+    tabText.classList.add('active');
+    tabDraw.classList.remove('active');
+    $('text-editor').focus();
+  };
+
+  tabDrawBtn.onclick = () => {
+    tabDrawBtn.classList.add('active');
+    tabTextBtn.classList.remove('active');
+    tabDraw.classList.add('active');
+    tabText.classList.remove('active');
+    initCanvasSize();
+    updateCursor();
+  };
+
+  // --- 1. 텍스트 에디터 기능 ---
+  const textEditor = $('text-editor');
+
+  // 텍스트 클립보드 복사
+  $('btn-copy-text').onclick = async () => {
+    const text = textEditor.value;
+    if (!text.trim()) {
+      showToast('⚠️ 복사할 텍스트가 없습니다.');
+      return;
+    }
+    await window.notepadApi.copyText(text);
+    showToast('📋 텍스트가 클립보드에 복사되었습니다!');
+  };
+
+  // 텍스트 파일 저장
+  $('btn-save-text').onclick = async () => {
+    const text = textEditor.value;
+    if (!text.trim()) {
+      showToast('⚠️ 저장할 텍스트가 없습니다.');
+      return;
+    }
+    const res = await window.notepadApi.saveTextFile(text);
+    if (res.success) {
+      showToast('💾 텍스트 파일이 저장되었습니다.');
+    } else if (!res.canceled) {
+      showToast('❌ 저장 실패');
+    }
+  };
+
+  // 제어기로 보내기
+  $('btn-send-to-ctrl').onclick = async () => {
+    const text = textEditor.value;
+    if (!text.trim()) {
+      showToast('⚠️ 전송할 텍스트가 없습니다.');
+      return;
+    }
+    await window.notepadApi.sendToControlBar(text);
+    showToast('🚀 제어기 프롬프트 바에 입력되었습니다!');
+  };
+
+  // --- 2. 그림판(UI 스케치) 캔버스 기능 ---
+  const canvas = $('draw-canvas');
+  const ctx = canvas.getContext('2d');
+  const container = $('canvas-container');
+
+  let currentTool = 'pen'; // 'pen', 'rect', 'arrow', 'eraser'
+  let currentColor = '#ffffff';
+  let currentSize = 4;
+  let isDrawing = false;
+  let startX = 0;
+  let startY = 0;
+
+  // Undo 히스토리 관리
+  const history = [];
+  const MAX_HISTORY = 20;
+
+  function saveHistory() {
+    if (history.length >= MAX_HISTORY) history.shift();
+    history.push(canvas.toDataURL('image/png'));
+  }
+
+  function restoreHistory(dataUrl) {
+    const img = new Image();
+    img.src = dataUrl;
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+    };
+  }
+
+  function initCanvasSize() {
+    const rect = container.getBoundingClientRect();
+    if (canvas.width !== rect.width || canvas.height !== rect.height) {
+      // 기존 내용 보존
+      const backup = canvas.width ? canvas.toDataURL() : null;
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      
+      // 배경색 칠하기 (다크 캔버스)
+      ctx.fillStyle = '#181b29';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (backup) {
+        const img = new Image();
+        img.src = backup;
+        img.onload = () => ctx.drawImage(img, 0, 0);
+      } else {
+        saveHistory();
+      }
+    }
+  }
+
+  // 툴 선택
+  const tools = {
+    pen: $('tool-pen'),
+    rect: $('tool-rect'),
+    circle: $('tool-circle'),
+    arrow: $('tool-arrow'),
+    text: $('tool-text'),
+    eraser: $('tool-eraser'),
+  };
+
+  const textBox = $('canvas-text-box');
+  const textDragHandle = $('text-drag-handle');
+  const textInput = $('canvas-text-input');
+  const btnTextApply = $('btn-text-apply');
+  const btnTextClose = $('btn-text-close');
+
+  function getFontSize() {
+    if (currentSize <= 2) return 14;
+    if (currentSize <= 4) return 18;
+    if (currentSize <= 8) return 24;
+    return 32;
+  }
+
+  function commitText() {
+    if (!textBox || textBox.style.display === 'none') return;
+    const val = textInput.value.trim();
+    if (val) {
+      saveHistory(); // 텍스트를 캔버스에 그리기 직전 1회만 히스토리 백업 (Undo 정상화)
+      const fontSize = getFontSize();
+      ctx.font = `600 ${fontSize}px 'Segoe UI', 'Pretendard', 'Malgun Gothic', sans-serif`;
+      ctx.fillStyle = currentColor === '#181b29' ? '#ffffff' : currentColor;
+      ctx.textBaseline = 'top';
+
+      const boxLeft = parseFloat(textBox.style.left) || 0;
+      const boxTop = parseFloat(textBox.style.top) || 0;
+      // 헤더 높이(약 24px) + textarea 내부 패딩(left: 6px, top: 4px) 오프셋 적용
+      const textX = boxLeft + 6;
+      const textY = boxTop + 24 + 4;
+
+      const lines = val.split('\n');
+      const lineHeight = fontSize * 1.35;
+      lines.forEach((line, idx) => {
+        ctx.fillText(line, textX, textY + idx * lineHeight);
+      });
+      showToast('✍️ 텍스트가 캔버스에 추가되었습니다.');
+    }
+    textInput.value = '';
+    textInput.style.height = '34px';
+    textBox.style.display = 'none';
+  }
+
+  function cancelText() {
+    if (!textBox) return;
+    textInput.value = '';
+    textInput.style.height = '34px';
+    textBox.style.display = 'none';
+  }
+
+  // 텍스트 박스 생성/표시 함수 (x, y가 없으면 캔버스 중앙에 즉시 표시)
+  function spawnTextBox(targetX, targetY) {
+    const fontSize = getFontSize();
+    let left = targetX !== undefined ? targetX : Math.round(canvas.width / 2 - 90);
+    let top = targetY !== undefined ? targetY : Math.round(canvas.height / 2 - 40);
+
+    const initialLeft = Math.max(8, Math.min(left, canvas.width - 180));
+    const initialTop = Math.max(8, Math.min(top, canvas.height - 80));
+
+    textBox.style.left = `${initialLeft}px`;
+    textBox.style.top = `${initialTop}px`;
+    textBox.style.display = 'block';
+
+    textInput.style.fontSize = `${fontSize}px`;
+    textInput.style.color = currentColor === '#181b29' ? '#ffffff' : currentColor;
+    textInput.value = '';
+    textInput.style.height = '34px';
+
+    setTimeout(() => {
+      textInput.focus();
+    }, 20);
+  }
+
+  if (btnTextApply) btnTextApply.onclick = () => commitText();
+  if (btnTextClose) btnTextClose.onclick = () => cancelText();
+
+  // 텍스트 인풋 이벤트 처리
+  textInput.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelText();
+      return;
+    }
+    // Enter(단독) 시 커밋, Shift+Enter는 줄바꿈
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      commitText();
+      return;
+    }
+  });
+
+  // 텍스트 입력 시 높이 자동 조절
+  textInput.addEventListener('input', () => {
+    textInput.style.height = 'auto';
+    textInput.style.height = Math.max(38, textInput.scrollHeight) + 'px';
+  });
+
+  // 드래그로 텍스트 박스 이동 기능 구현
+  let isDraggingText = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let boxStartLeft = 0;
+  let boxStartTop = 0;
+
+  if (textDragHandle) {
+    textDragHandle.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      isDraggingText = true;
+      textDragHandle.setPointerCapture(e.pointerId);
+      textDragHandle.style.cursor = 'grabbing';
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      boxStartLeft = parseFloat(textBox.style.left) || 0;
+      boxStartTop = parseFloat(textBox.style.top) || 0;
+    });
+
+    textDragHandle.addEventListener('pointermove', e => {
+      if (!isDraggingText) return;
+      e.preventDefault();
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      let newLeft = boxStartLeft + dx;
+      let newTop = boxStartTop + dy;
+
+      const maxLeft = Math.max(0, canvas.width - 60);
+      const maxTop = Math.max(0, canvas.height - 30);
+      newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+      newTop = Math.max(0, Math.min(newTop, maxTop));
+
+      textBox.style.left = `${newLeft}px`;
+      textBox.style.top = `${newTop}px`;
+    });
+
+    const stopTextDrag = (e) => {
+      if (!isDraggingText) return;
+      isDraggingText = false;
+      textDragHandle.style.cursor = 'grab';
+      try {
+        textDragHandle.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+    };
+
+    textDragHandle.addEventListener('pointerup', stopTextDrag);
+    textDragHandle.addEventListener('pointercancel', stopTextDrag);
+  }
+
+  function updateCursor() {
+    if (currentTool === 'eraser') {
+      const eraserSize = Math.max(16, currentSize * 2.5);
+      const r = Math.round(eraserSize / 2);
+      const d = r * 2;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${d}" height="${d}"><circle cx="${r}" cy="${r}" r="${r - 1}" fill="rgba(255,255,255,0.2)" stroke="#ffffff" stroke-width="1.5"/></svg>`;
+      const url = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+      const cursorStyle = `url("${url}") ${r} ${r}, auto`;
+      canvas.style.cursor = cursorStyle;
+      container.style.cursor = cursorStyle;
+    } else if (currentTool === 'text') {
+      canvas.style.cursor = 'text';
+      container.style.cursor = 'text';
+    } else {
+      canvas.style.cursor = 'crosshair';
+      container.style.cursor = 'crosshair';
+    }
+  }
+
+  function setTool(toolName) {
+    if (currentTool === 'text' && toolName !== 'text') {
+      commitText();
+    }
+    currentTool = toolName;
+    Object.keys(tools).forEach(k => {
+      if (k === toolName) tools[k].classList.add('active');
+      else tools[k].classList.remove('active');
+    });
+    updateCursor();
+
+    // 텍스트 도구 선택 시 캔버스 클릭 기다리지 않고 즉시 텍스트 박스 오픈!
+    if (toolName === 'text') {
+      spawnTextBox();
+    }
+  }
+
+  $('tool-pen').onclick = () => setTool('pen');
+  $('tool-rect').onclick = () => setTool('rect');
+  $('tool-circle').onclick = () => setTool('circle');
+  $('tool-arrow').onclick = () => setTool('arrow');
+  $('tool-text').onclick = () => setTool('text');
+  $('tool-eraser').onclick = () => setTool('eraser');
+
+  // 선 굵기 / 글자 크기
+  $('line-size').onchange = (e) => {
+    currentSize = parseInt(e.target.value, 10);
+    if (textBox && textBox.style.display !== 'none') {
+      textInput.style.fontSize = `${getFontSize()}px`;
+    }
+    updateCursor();
+  };
+
+  // 색상 선택
+  document.querySelectorAll('.color-dot').forEach(dot => {
+    dot.onclick = () => {
+      document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+      dot.classList.add('active');
+      currentColor = dot.dataset.color;
+      if (textBox && textBox.style.display !== 'none') {
+        textInput.style.color = currentColor === '#181b29' ? '#ffffff' : currentColor;
+      }
+      if (currentTool === 'eraser') setTool('pen');
+    };
+  });
+
+  // Undo (되돌리기)
+  function undo() {
+    commitText();
+    if (history.length > 1) {
+      history.pop(); // 현재 상태 제거
+      const prev = history[history.length - 1];
+      restoreHistory(prev);
+      showToast('↩ 이전 상태로 되돌렸습니다.');
+    } else {
+      showToast('⚠️ 더 이상 되돌릴 작업이 없습니다.');
+    }
+  }
+  $('btn-undo').onclick = undo;
+
+  // 전체 지우기
+  $('btn-clear').onclick = () => {
+    commitText();
+    saveHistory();
+    ctx.fillStyle = '#181b29';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    saveHistory();
+    showToast('🗑️ 캔버스를 초기화했습니다.');
+  };
+
+  // 드로잉 좌표 계산
+  function getCanvasCoords(e) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - r.left,
+      y: e.clientY - r.top
+    };
+  }
+
+  let snapshot = null;
+
+  canvas.addEventListener('pointerdown', e => {
+    const { x, y } = getCanvasCoords(e);
+
+    // 텍스트 도구일 때: 클릭한 위치로 텍스트 박스 이동 배치
+    if (currentTool === 'text') {
+      if (textBox.style.display !== 'none' && textInput.value.trim()) {
+        commitText();
+      }
+      spawnTextBox(x - 6, y - 24);
+      return;
+    }
+
+    // 다른 도구 클릭 시 입력 중인 텍스트가 있다면 확정 커밋
+    commitText();
+
+    isDrawing = true;
+    startX = x;
+    startY = y;
+
+    ctx.lineWidth = currentSize;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (currentTool === 'eraser') {
+      ctx.lineWidth = Math.max(16, currentSize * 2.5);
+      ctx.strokeStyle = '#181b29';
+    } else {
+      ctx.lineWidth = currentSize;
+      ctx.strokeStyle = currentColor;
+    }
+
+    if (currentTool === 'pen' || currentTool === 'eraser') {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    } else {
+      // rect, circle, arrow: 실시간 프리뷰를 위해 스냅샷 저장
+      snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    }
+  });
+
+  canvas.addEventListener('pointermove', e => {
+    if (!isDrawing) return;
+    const { x, y } = getCanvasCoords(e);
+
+    if (currentTool === 'pen' || currentTool === 'eraser') {
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    } else if (currentTool === 'rect') {
+      ctx.putImageData(snapshot, 0, 0);
+      ctx.strokeRect(startX, startY, x - startX, y - startY);
+    } else if (currentTool === 'circle') {
+      ctx.putImageData(snapshot, 0, 0);
+      const radiusX = Math.abs(x - startX) / 2;
+      const radiusY = Math.abs(y - startY) / 2;
+      const centerX = Math.min(startX, x) + radiusX;
+      const centerY = Math.min(startY, y) + radiusY;
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, Math.max(0.1, radiusX), Math.max(0.1, radiusY), 0, 0, 2 * Math.PI);
+      ctx.stroke();
+    } else if (currentTool === 'arrow') {
+      ctx.putImageData(snapshot, 0, 0);
+      drawArrow(startX, startY, x, y);
+    }
+  });
+
+  function stopDrawing() {
+    if (!isDrawing) return;
+    isDrawing = false;
+    saveHistory();
+  }
+
+  canvas.addEventListener('pointerup', stopDrawing);
+  canvas.addEventListener('pointerleave', stopDrawing);
+
+  // 화살표 그리기 헬퍼
+  function drawArrow(fromX, fromY, toX, toY) {
+    const headlen = Math.max(12, currentSize * 3);
+    const angle = Math.atan2(toY - fromY, toX - fromX);
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+    ctx.closePath();
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.fill();
+  }
+
+  // 단축키 (Ctrl+Z)
+  window.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      if (tabDraw.classList.contains('active')) {
+        e.preventDefault();
+        undo();
+      }
+    }
+  });
+
+  // 이미지 캡처 (클립보드에 PNG 복사)
+  $('btn-copy-image').onclick = async () => {
+    commitText();
+    const dataUrl = canvas.toDataURL('image/png');
+    await window.notepadApi.copyImage(dataUrl);
+    showToast('📸 그림이 클립보드에 복사되었습니다! (Ctrl+V로 전송)');
+  };
+
+  // 이미지 파일 저장
+  $('btn-save-image').onclick = async () => {
+    commitText();
+    const dataUrl = canvas.toDataURL('image/png');
+    const res = await window.notepadApi.saveImageFile(dataUrl);
+    if (res.success) {
+      showToast('💾 이미지 파일이 저장되었습니다.');
+    } else if (!res.canceled) {
+      showToast('❌ 이미지 저장 실패');
+    }
+  };
+
+  // 그림판에서 CTR로 보내기 (클립보드 복사 + CTR 상태바/입력창 알림 주입)
+  $('btn-send-draw-to-ctrl').onclick = async () => {
+    commitText();
+    const dataUrl = canvas.toDataURL('image/png');
+    await window.notepadApi.copyImage(dataUrl);
+    await window.notepadApi.sendToControlBar('[🎨 UI 스케치가 클립보드에 준비되었습니다]');
+    showToast('🚀 스케치가 복사되었으며 CTR에 알림을 보냈습니다!');
+  };
+
+  // 창 로드 시 캔버스 초기화 (리사이즈 시 80ms 디바운싱으로 불필요한 toDataURL 반복 호출 방지)
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(initCanvasSize, 80);
+  });
+  window.addEventListener('DOMContentLoaded', () => {
+    initCanvasSize();
+  });
+</script>
+</body>
+</html>

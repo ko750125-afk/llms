@@ -2,96 +2,844 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>통합 프롬프트 바</title>
+<title>통합 프롬프트 CTR</title>
 <style>
-  * { box-sizing: border-box; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    height: 100vh; padding: 12px 16px; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
-    background: linear-gradient(135deg, #12141f, #1c1f33); color: #e8eaf6;
-    display: flex; flex-direction: column; gap: 8px;
+    height: 100vh; padding: 8px 12px; font-family: 'Segoe UI', 'Pretendard', 'Malgun Gothic', sans-serif;
+    background: linear-gradient(135deg, #0f121d, #191c2e); color: #e2e8f0;
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; user-select: none;
+    overflow: hidden; position: relative;
   }
-  .row { display: flex; gap: 10px; align-items: stretch; flex: 1; min-height: 0; }
+
+  /* 상단 사이트 & 스킬 런처 바 (스케치 반영: 상단 돌출 폴더 탭 + 본체 박스) */
+  #site-launcher-bar {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: auto;
+    width: 100%;
+  }
+  #site-launcher-bar.active {
+    display: flex;
+  }
+
+  /* 상단 좌측 돌출 폴더 탭 그룹 (Web | Skills) */
+  .launcher-folder-tabs {
+    display: flex;
+    gap: 3px;
+    padding-left: 8px;
+    margin-bottom: -1px; /* 본체 박스 윗변과 겹쳐서 완벽한 일체형 폴더 효과 */
+    z-index: 2;
+  }
+  .folder-tab {
+    height: 28px;
+    padding: 0 16px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    letter-spacing: 0.2px;
+    color: #94a3b8;
+    background: rgba(15, 18, 29, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    transition: all .15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .folder-tab:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+  .folder-tab.active {
+    color: #0f172a;
+    background: #ffffff;
+    border-color: #ffffff;
+    border-bottom: 1px solid #ffffff;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.35);
+  }
+
+  /* 스케치의 큰 직사각형 메인 본체 박스 */
+  .launcher-content-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #141726;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0 8px 8px 8px;
+    min-height: 50px;
+    overflow-x: auto;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+  }
+
+  .site-list {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    overflow-x: auto;
+  }
+
+  /* 대표님 요청: 하얀색 바탕에 검은 글씨 버튼 (Web 사이트 바로가기 버튼) */
+  .site-item-btn {
+    height: 32px;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0f172a;
+    background: #ffffff;
+    border: 1px solid #ffffff;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    transition: all .15s ease;
+  }
+  .site-item-btn:hover {
+    background: #f1f5f9;
+    color: #000000;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+  .site-item-btn:active {
+    transform: translateY(0);
+    background: #e2e8f0;
+  }
+
+  /* 설정 버튼 */
+  .btn-site-config {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all .15s ease;
+  }
+  .btn-site-config:hover {
+    color: #ffffff;
+    border-color: #ffffff;
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  /* 대표님 요청: 하얀색 바탕에 검은 글씨 버튼 (Skills 스킬 바로가기 버튼) */
+  .skill-item-btn {
+    height: 32px;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0f172a;
+    background: #ffffff;
+    border: 1px solid #ffffff;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    transition: all .15s ease;
+  }
+  .skill-item-btn:hover {
+    background: #f1f5f9;
+    color: #000000;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+  .skill-item-btn:active {
+    transform: translateY(0);
+    background: #e2e8f0;
+  }
+
+  /* 메인 입력 및 버튼 행 - 하단 고정 높이 */
+  .row {
+    display: flex; gap: 8px; align-items: stretch; height: 76px; flex: none; min-height: 76px;
+    position: relative;
+  }
+  .textarea-container {
+    flex: 1; position: relative; display: flex;
+  }
   textarea {
-    flex: 1; resize: none; padding: 10px 14px; font-size: 15px; color: #fff;
-    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.15);
-    border-radius: 12px; outline: none; transition: border-color .2s, box-shadow .2s;
+    flex: 1; resize: none; padding: 8px 12px; font-size: 13px; color: #fff;
+    background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px; outline: none; transition: border-color .2s, box-shadow .2s;
+    font-family: inherit; line-height: 1.4;
   }
-  textarea:focus { border-color: #7c8cff; box-shadow: 0 0 0 3px rgba(124,140,255,.25); }
-  button {
-    border: 0; border-radius: 12px; padding: 0 18px; font-size: 14px; font-weight: 600;
-    cursor: pointer; color: #fff; transition: transform .15s, filter .15s;
-    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  textarea:focus {
+    border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+    background: rgba(255, 255, 255, 0.08);
   }
-  button:hover { transform: translateY(-1px); filter: brightness(1.15); }
-  #send { background: linear-gradient(135deg, #6c7bff, #a266ff); font-size: 15px; padding: 0 22px; }
-  #new, #reset, #move, #min, #close { background: rgba(255,255,255,.12); }
-  #close { padding: 0 16px; font-size: 16px; font-weight: 700; }
-  #close:hover { background: rgba(255, 75, 75, 0.6); }
-  .meta { display: flex; gap: 16px; align-items: center; font-size: 13px; }
-  label { cursor: pointer; display: flex; gap: 5px; align-items: center; }
-  #status { margin-left: auto; color: #9fa8da; }
+
+  /* 슬래시(/) 자동완성 스킬 팔레트 (대화창 바로 위에 온전하게 팝업) */
+  #slash-palette {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    width: 380px;
+    max-height: 185px;
+    background: #141726;
+    border: 1px solid rgba(99, 102, 241, 0.45);
+    border-radius: 9px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.8);
+    z-index: 2000;
+    overflow-y: auto;
+    padding: 6px;
+    flex-direction: column;
+    gap: 4px;
+  }
+  #slash-palette.active { display: flex; }
+  .palette-item {
+    padding: 7px 10px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    cursor: pointer;
+    background: transparent;
+    transition: all .12s;
+  }
+  .palette-item:hover, .palette-item.selected {
+    background: rgba(99, 102, 241, 0.25);
+  }
+  .palette-item-header {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .palette-item-title {
+    font-size: 12px; font-weight: 600; color: #f8fafc;
+  }
+  .palette-item-trigger {
+    font-size: 11px; font-weight: 700; color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.2); padding: 1px 6px; border-radius: 4px;
+  }
+  .palette-item-preview {
+    font-size: 11px; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  
+  /* 제어기 툴바: 4열 x 2행 8버튼 그리드 */
+  .toolbar-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 82px);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 6px;
+  }
+  
+  /* 공통 제어기 버튼 스타일 */
+  .btn-ctrl {
+    height: 100%; min-height: 34px; padding: 0 6px; font-size: 12px; font-weight: 600;
+    cursor: pointer; color: #e2e8f0; background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    transition: all .15s ease; white-space: nowrap; outline: none;
+  }
+  .btn-ctrl:hover {
+    transform: translateY(-1px); filter: brightness(1.2);
+    background: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.25);
+  }
+  .btn-ctrl:active { transform: translateY(0); filter: brightness(0.95); }
+  
+  /* 주요 전송 버튼 */
+  #send {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none; color: #ffffff;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+  }
+  #send:hover {
+    box-shadow: 0 3px 10px rgba(99, 102, 241, 0.55);
+  }
+
+  /* 메모장 버튼 */
+  #notepad-btn {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.35);
+    color: #c7d2fe;
+  }
+  #notepad-btn:hover {
+    background: rgba(99, 102, 241, 0.3);
+    border-color: #818cf8;
+    color: #ffffff;
+  }
+
+  /* 닫기 버튼 */
+  #close:hover { background: rgba(239, 68, 68, 0.7); border-color: #ef4444; color: #fff; }
+
+  /* 제어기 하단 인포 바 */
+  .footer-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; color: #94a3b8; padding: 0 2px;
+  }
+  .badge-tag-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-weight: 700; color: #c7d2fe; background: rgba(99, 102, 241, 0.18);
+    padding: 2px 8px; border-radius: 5px; font-size: 11px;
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .badge-tag-btn:hover {
+    background: rgba(99, 102, 241, 0.35);
+    border-color: #818cf8;
+    color: #ffffff;
+  }
+  #status { margin-left: auto; color: #38bdf8; font-weight: 500; }
 </style>
 </head>
 <body>
+  <!-- 상단 사이트 & 스킬 런처 바 (스케치 반영: 상단 좌측 돌출 폴더 탭 + 본체 박스) -->
+  <div id="site-launcher-bar">
+    <div class="launcher-folder-tabs">
+      <button id="tab-show-sites" class="folder-tab active" title="사이트 바로가기">Web</button>
+      <button id="tab-show-skills" class="folder-tab" title="스킬 목록">Skills</button>
+    </div>
+    <div id="launcher-content-box" class="launcher-content-box">
+      <div id="launcher-items-container" class="site-list"></div>
+      <button id="open-config-btn" class="btn-site-config" title="사이트 및 스킬 전용 설정창 열기">
+        ⚙ <span>설정</span>
+      </button>
+    </div>
+  </div>
+
   <div class="row">
-    <textarea id="prompt" placeholder="모든 LLM에 보낼 프롬프트를 입력하세요  (Enter: 전송 / Shift+Enter: 줄바꿈)" autofocus></textarea>
-    <button id="send" title="모든 LLM에 프롬프트 전송 (Enter)">전송 ▶</button>
-    <button id="new" title="새 대화 시작">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-        <text x="12" y="11" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none" dy=".35em">NEW</text>
-      </svg>
-    </button>
-    <button id="reset" title="3분할 원래 위치로 복귀">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="3"></rect>
-        <line x1="9" y1="3" x2="9" y2="21"></line>
-        <line x1="15" y1="3" x2="15" y2="21"></line>
-      </svg>
-    </button>
-    <button id="move" title="다음 모니터로 이동">
-      <span style="font-weight: 800; font-size: 13px; display: inline-flex; align-items: center; gap: 5px;">
-        A
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <div class="textarea-container">
+      <textarea id="prompt" autofocus></textarea>
+      
+      <!-- 슬래시(/) 자동완성 스킬 팔레트 -->
+      <div id="slash-palette"></div>
+    </div>
+    
+    <!-- 4열 x 2행 8개 버튼 그리드 -->
+    <div class="toolbar-grid">
+      <!-- 1행: 전송 / 새대화 / 3분할 / 내리기 -->
+      <button id="send" class="btn-ctrl" title="동시 전송 (Enter)">
+        <span>전송</span> ▶
+      </button>
+
+      <button id="new" class="btn-ctrl" title="새 대화">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>새대화</span>
+      </button>
+
+      <button id="reset" class="btn-ctrl" title="3분할 원래 위치 복귀">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+          <line x1="9" y1="3" x2="9" y2="21"></line>
+          <line x1="15" y1="3" x2="15" y2="21"></line>
+        </svg>
+        <span>3분할</span>
+      </button>
+
+      <button id="min" class="btn-ctrl" title="모든 창 내리기">
+        <span>내리기 ─</span>
+      </button>
+
+      <!-- 2행: 탐색기 / 메모장 / A ⇄ B / X -->
+      <button id="explorer" class="btn-ctrl" title="내 PC 탐색기 열기">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>탐색기</span>
+      </button>
+
+      <button id="notepad-btn" class="btn-ctrl" title="메모장 및 스케치 열기">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+        <span>메모장</span>
+      </button>
+
+      <button id="move" class="btn-ctrl" title="다음 모니터로 이동">
+        <span>A</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="17 1 21 5 17 9"></polyline>
           <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
           <polyline points="7 23 3 19 7 15"></polyline>
           <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
         </svg>
-        B
-      </span>
-    </button>
-    <button id="min" title="모든 LLM 창과 입력창을 함께 작업표시줄로 내립니다">창 내리기 ─</button>
-    <button id="close" title="모든 LLM 창과 앱을 완전히 닫습니다">✕</button>
+        <span>B</span>
+      </button>
+
+      <button id="close" class="btn-ctrl" title="전체 종료">
+        <span>✕</span>
+      </button>
+    </div>
   </div>
-  <div class="meta">
-    <label><input type="checkbox" class="t" checked> ChatGPT</label>
-    <label><input type="checkbox" class="t" checked> Gemini</label>
-    <label><input type="checkbox" class="t" checked> Claude</label>
+
+  <div class="footer-bar">
+    <button id="ctr-toggle-btn" class="badge-tag-btn" title="사이트 런처 및 스킬 바 열기">
+      <span>CTR</span>
+      <span id="ctr-arrow">▲</span>
+    </button>
     <span id="status"></span>
   </div>
+
 <script>
   const $ = id => document.getElementById(id);
-  async function go() {
-    const text = $('prompt').value.trim();
-    if (!text) return;
-    const targets = [...document.querySelectorAll('.t')].map(c => c.checked);
-    $('status').textContent = '전송 중...';
-    const r = await window.api.send(text, targets);
-    const fail = Object.entries(r).filter(([, ok]) => !ok).map(([n]) => n);
-    $('status').textContent = fail.length ? `실패: ${fail.join(', ')} (로그인/입력창 확인)` : '전송 완료 ✔';
-    if (!fail.length) $('prompt').value = '';
-    $('prompt').focus();
+  
+  // 기본 제공 내장 스킬 3종 (스킬명 하나로 통일)
+  const DEFAULT_FALLBACK_SKILLS = [
+    {
+      id: 'skill-1',
+      name: '번역',
+      title: '번역',
+      trigger: '/번역',
+      content: '[지시사항]\n다음 내용을 자연스러운 비즈니스 한국어(또는 상대방 언어)로 전문 번역하고 문맥을 다듬어 주세요.'
+    },
+    {
+      id: 'skill-2',
+      name: '요약',
+      title: '요약',
+      trigger: '/요약',
+      content: '[지시사항]\n제공된 텍스트에서 가장 중요한 핵심 내용 3가지를 글머리기호(- )로 명확히 요약해 주세요.'
+    },
+    {
+      id: 'skill-3',
+      name: '코드리뷰',
+      title: '코드리뷰',
+      trigger: '/코드리뷰',
+      content: '[지시사항]\n다음 코드의 잠재적 버그, 가독성, 예외 처리, 성능 최적화 포인트를 단계별로 점검하고 리팩토링 제안을 작성해 주세요.'
+    }
+  ];
+
+  let sitesData = [];
+  let skillsData = [...DEFAULT_FALLBACK_SKILLS];
+
+  // 사이트 정렬 로직 (영문 ABC -> 한글 가나다)
+  function sortSites(list) {
+    if (!Array.isArray(list)) return [];
+    return [...list].sort((a, b) => {
+      const nameA = (a.name || '').trim();
+      const nameB = (b.name || '').trim();
+      const isEng = s => /^[a-zA-Z]/.test(s);
+      const isKor = s => /^[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(s);
+      const aEng = isEng(nameA);
+      const bEng = isEng(nameB);
+      const aKor = isKor(nameA);
+      const bKor = isKor(nameB);
+
+      if (aEng && bEng) return nameA.localeCompare(nameB, 'en', { sensitivity: 'base' });
+      if (aEng && !bEng) return -1;
+      if (!aEng && bEng) return 1;
+      if (aKor && bKor) return nameA.localeCompare(nameB, 'ko');
+      if (aKor && !bKor) return -1;
+      if (!aKor && bKor) return 1;
+      return nameA.localeCompare(nameB);
+    });
   }
+
+  let activeLauncherMode = 'sites'; // 'sites' 또는 'skills'
+
+  // 상단 바 아이템 렌더링 (사이트 모드 vs 스킬 모드: ⚡ /{스킬명})
+  function renderLauncherItems() {
+    const container = $('launcher-items-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (activeLauncherMode === 'sites') {
+      const sorted = sortSites(sitesData);
+      sorted.forEach(s => {
+        const btn = document.createElement('button');
+        btn.className = 'site-item-btn';
+        btn.textContent = s.name;
+        btn.title = s.url;
+        btn.onclick = () => {
+          if (window.api.openUrl) window.api.openUrl(s.url);
+        };
+        container.appendChild(btn);
+      });
+    } else {
+      // 스킬 모드: 등록된 모든 스킬 버튼 렌더링 (대표님 지시: 번개 아이콘, / 없이 순수 제목만 표기)
+      const list = (skillsData && skillsData.length) ? skillsData : DEFAULT_FALLBACK_SKILLS;
+      list.forEach(skill => {
+        const skillName = (skill.name || skill.title || (skill.trigger || '').replace(/^\//, '')).trim();
+        const btn = document.createElement('button');
+        btn.className = 'skill-item-btn';
+        btn.textContent = skillName;
+        btn.title = skill.content;
+        btn.onclick = () => {
+          applySkill(skill);
+        };
+        container.appendChild(btn);
+      });
+    }
+  }
+
+  $('tab-show-sites').onclick = () => {
+    activeLauncherMode = 'sites';
+    $('tab-show-sites').classList.add('active');
+    $('tab-show-skills').classList.remove('active');
+    const box = $('launcher-content-box');
+    if (box) box.style.borderRadius = '0 8px 8px 8px';
+    renderLauncherItems();
+  };
+
+  $('tab-show-skills').onclick = () => {
+    activeLauncherMode = 'skills';
+    $('tab-show-skills').classList.add('active');
+    $('tab-show-sites').classList.remove('active');
+    const box = $('launcher-content-box');
+    if (box) box.style.borderRadius = '8px';
+    renderLauncherItems();
+  };
+
+  // 데이터 로드
+  async function initData() {
+    if (window.api.getSites) {
+      const res = await window.api.getSites();
+      sitesData = (Array.isArray(res) && res.length > 0) ? res : [];
+    }
+    if (window.api.getSkills) {
+      const res = await window.api.getSkills();
+      skillsData = (Array.isArray(res) && res.length > 0) ? res : DEFAULT_FALLBACK_SKILLS;
+    } else {
+      skillsData = DEFAULT_FALLBACK_SKILLS;
+    }
+    renderLauncherItems();
+  }
+
+  // 설정 창에서 데이터 변경 시 실시간 동기화
+  if (window.api.onSyncData) {
+    window.api.onSyncData(({ type, data }) => {
+      if (type === 'sites') {
+        sitesData = data;
+      } else if (type === 'skills') {
+        skillsData = (Array.isArray(data) && data.length > 0) ? data : DEFAULT_FALLBACK_SKILLS;
+      }
+      renderLauncherItems();
+    });
+  }
+
+  // 상단 사이트 런처 바 토글 상태
+  let isLauncherOpen = false;
+  async function toggleLauncher() {
+    isLauncherOpen = !isLauncherOpen;
+    const bar = $('site-launcher-bar');
+    const arrow = $('ctr-arrow');
+    if (isLauncherOpen) {
+      bar.classList.add('active');
+      arrow.textContent = '▼';
+    } else {
+      bar.classList.remove('active');
+      arrow.textContent = '▲';
+    }
+    if (window.api.setBarHeight) {
+      await window.api.setBarHeight(isLauncherOpen);
+    }
+  }
+
+  $('ctr-toggle-btn').onclick = toggleLauncher;
+
+  // 독립 전면 설정 창 오픈
+  $('open-config-btn').onclick = () => {
+    if (window.api.toggleSettings) {
+      window.api.toggleSettings();
+    }
+  };
+
+  // ---- 스마트 스킬 팔레트 기능 ----
+  const palette = $('slash-palette');
+  const promptEl = $('prompt');
+  let selectedIndex = 0;
+  let activeMatches = [];
+
+  async function showSkillPalette(query = '') {
+    const q = query.toLowerCase().replace(/^[\/\[]/, '').trim();
+    const sourceList = (skillsData && skillsData.length) ? skillsData : DEFAULT_FALLBACK_SKILLS;
+    activeMatches = sourceList.filter(s => {
+      const skillName = (s.name || s.title || (s.trigger || '').replace(/^\//, '')).toLowerCase();
+      return skillName.includes(q);
+    });
+
+    if (!activeMatches.length) {
+      await hideSkillPalette();
+      return;
+    }
+
+    selectedIndex = 0;
+    renderPalette();
+    palette.classList.add('active');
+    // 기본 화면(120px) 상태에서도 팔레트가 잘리지 않고 위쪽으로 온전히 노출되도록 창 높이를 320px로 확장
+    if (window.api.setBarHeight) {
+      await window.api.setBarHeight(320);
+    }
+  }
+
+  async function hideSkillPalette() {
+    if (!palette.classList.contains('active')) return;
+    palette.classList.remove('active');
+    // 원래 높이로 복원 (CTR 열림: 200px, 기본화면: 120px)
+    if (window.api.setBarHeight) {
+      await window.api.setBarHeight(isLauncherOpen ? 200 : 120);
+    }
+  }
+
+  function renderPalette() {
+    palette.innerHTML = '';
+    activeMatches.forEach((skill, idx) => {
+      const skillName = (skill.name || skill.title || (skill.trigger || '').replace(/^\//, '')).trim();
+      const item = document.createElement('div');
+      item.className = 'palette-item' + (idx === selectedIndex ? ' selected' : '');
+      item.innerHTML = `
+        <div class="palette-item-header">
+          <span class="palette-item-title" style="color: #a5b4fc; font-weight: 700; font-size: 13px;">[ ${skillName} ]</span>
+        </div>
+        <div class="palette-item-preview">${skill.content.replace(/\n/g, ' ')}</div>
+      `;
+      item.onmousedown = (e) => {
+        e.preventDefault();
+        applySkill(skill);
+      };
+      palette.appendChild(item);
+    });
+  }
+
+  function applySkill(skill) {
+    const skillName = (skill.name || skill.title || (skill.trigger || '').replace(/^\//, '')).trim();
+    // 대표님 지시: 대화창에는 [ 스킬명 ] 포맷으로 깔끔하게 표시
+    const keyword = `[ ${skillName} ]`;
+
+    const val = promptEl.value;
+    const cursorPos = promptEl.selectionStart;
+    const lastSlash = val.lastIndexOf('/', cursorPos);
+    const lastBracket = val.lastIndexOf('[', cursorPos);
+
+    let triggerIdx = -1;
+    if (lastSlash !== -1 && lastBracket !== -1) {
+      triggerIdx = Math.max(lastSlash, lastBracket);
+    } else if (lastSlash !== -1) {
+      triggerIdx = lastSlash;
+    } else if (lastBracket !== -1) {
+      triggerIdx = lastBracket;
+    }
+
+    let prefix = '';
+    let suffix = '';
+    if (triggerIdx !== -1) {
+      prefix = val.substring(0, triggerIdx);
+      suffix = val.substring(cursorPos);
+    } else {
+      prefix = val;
+    }
+
+    const separator = prefix && !prefix.endsWith('\n') && !prefix.endsWith(' ') ? ' ' : '';
+    const newText = prefix + separator + keyword + ' ' + (suffix ? suffix.trimStart() : '');
+    promptEl.value = newText;
+    hideSkillPalette();
+    promptEl.focus();
+    // 키워드 바로 뒤 한 칸 띄운 위치로 커서 이동하여 곧바로 질문 작성 가능
+    const newPos = (prefix + separator + keyword + ' ').length;
+    promptEl.setSelectionRange(newPos, newPos);
+  }
+
+  // 상단 스킬 버튼 클릭 시 스킬 팔레트 열기 (존재할 경우 방어적 연결)
+  const skillMenuBtn = $('skill-menu-btn');
+  if (skillMenuBtn) {
+    skillMenuBtn.onclick = async () => {
+      const sourceList = (skillsData && skillsData.length) ? skillsData : DEFAULT_FALLBACK_SKILLS;
+      activeMatches = sourceList;
+      selectedIndex = 0;
+      renderPalette();
+      if (palette.classList.contains('active')) {
+        await hideSkillPalette();
+      } else {
+        palette.classList.add('active');
+        if (window.api.setBarHeight) await window.api.setBarHeight(320);
+      }
+    };
+  }
+
+  // 키보드 입력 인터랙션 ( / 또는 [ 입력 시 스마트 스킬 팔레트 활성화 )
+  promptEl.addEventListener('input', () => {
+    const val = promptEl.value;
+    const cursorPos = promptEl.selectionStart;
+    const textBefore = val.substring(0, cursorPos);
+    const slashIdx = textBefore.lastIndexOf('/');
+    const bracketIdx = textBefore.lastIndexOf('[');
+
+    let activeTriggerIdx = -1;
+    if (slashIdx !== -1 && slashIdx >= bracketIdx) {
+      activeTriggerIdx = slashIdx;
+    } else if (bracketIdx !== -1) {
+      activeTriggerIdx = bracketIdx;
+    }
+
+    if (activeTriggerIdx !== -1) {
+      const queryPart = textBefore.substring(activeTriggerIdx + 1);
+      if (!queryPart.includes(']') && queryPart.length <= 20) {
+        showSkillPalette(queryPart);
+        return;
+      }
+    }
+    hideSkillPalette();
+  });
+
+  promptEl.addEventListener('keydown', e => {
+    if (palette.classList.contains('active')) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedIndex = (selectedIndex + 1) % activeMatches.length;
+        renderPalette();
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedIndex = (selectedIndex - 1 + activeMatches.length) % activeMatches.length;
+        renderPalette();
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        if (activeMatches[selectedIndex]) {
+          applySkill(activeMatches[selectedIndex]);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        hideSkillPalette();
+        return;
+      }
+    }
+
+    // 기본 전송: Enter (팔레트가 안 떴을 때)
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      go();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    const smBtn = $('skill-menu-btn');
+    if (!palette.contains(e.target) && (!smBtn || e.target !== smBtn)) {
+      hideSkillPalette();
+    }
+  });
+
+  function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  // 백그라운드 프롬프트 확장: [ 스킬명 ] 또는 /{스킬명} 키워드를 감지하여 LLM이 이해하는 정밀 시스템 지시사항으로 합성
+  function expandSkillsInPrompt(text) {
+    if (!text) return text;
+    let expandedText = text;
+    let appliedSkills = [];
+
+    const sourceList = (skillsData && skillsData.length) ? skillsData : DEFAULT_FALLBACK_SKILLS;
+
+    // 1. 대표님 신규 포맷: [ 스킬명 ] 또는 [스킬명] 검출 (예: [ 요약 ], [ 번역 ], [ 코드리뷰 ])
+    sourceList.forEach(s => {
+      const skillName = (s.name || s.title || (s.trigger || '').replace(/^\//, '')).trim();
+      if (!skillName) return;
+      const bracketRegex = new RegExp(`\\[\\s*${escapeRegex(skillName)}\\s*\\]`, 'gi');
+      if (bracketRegex.test(expandedText) && !appliedSkills.some(item => item.id === s.id)) {
+        appliedSkills.push(s);
+        expandedText = expandedText.replace(bracketRegex, ' ').trim();
+      }
+    });
+
+    // 2. 슬래시 키워드 (예: /요약, /번역) 검출 (수동 입력 호환)
+    sourceList.forEach(s => {
+      const skillName = (s.name || s.title || (s.trigger || '').replace(/^\//, '')).trim();
+      if (!skillName) return;
+      const trigger = '/' + skillName;
+      const trigRegex = new RegExp(`(^|\\s)${escapeRegex(trigger)}(\\s|$)`, 'gi');
+      if (trigRegex.test(expandedText) && !appliedSkills.some(item => item.id === s.id)) {
+        appliedSkills.push(s);
+        expandedText = expandedText.replace(trigRegex, '$1$2').trim();
+      }
+    });
+
+    // 3. 구버전 태그 [스킬: ...] 호환 검출
+    const tagRegex = /\[스킬:\s*([^\]]+)\]/gi;
+    let match;
+    while ((match = tagRegex.exec(text)) !== null) {
+      const rawTag = match[1].trim();
+      const found = sourceList.find(s => {
+        const name = (s.name || s.title || (s.trigger || '').replace(/^\//, '')).trim();
+        return name === rawTag || (s.trigger && s.trigger.trim() === rawTag);
+      });
+      if (found && !appliedSkills.some(s => s.id === found.id)) {
+        appliedSkills.push(found);
+      }
+    }
+    expandedText = expandedText.replace(tagRegex, '').trim();
+
+    if (appliedSkills.length === 0) {
+      return text;
+    }
+
+    const cleanUserText = expandedText.trim();
+    const skillInstructions = appliedSkills.map(s => {
+      const skillName = (s.name || s.title || (s.trigger || '').replace(/^\//, '')).trim();
+      return `### [스킬 지시사항: ${skillName}]\n${s.content}`;
+    }).join('\n\n');
+
+    return cleanUserText 
+      ? `${skillInstructions}\n\n========================================\n[사용자 입력 내용]:\n${cleanUserText}`
+      : skillInstructions;
+  }
+
+  // 전송 동작 (스마트 스킬 백그라운드 지침 확장)
+  async function go() {
+    const rawText = promptEl.value.trim();
+    if (!rawText) return;
+
+    // 백그라운드에서 스킬 지침을 합성하여 LLM에 전달
+    const finalText = expandSkillsInPrompt(rawText);
+    
+    const targets = [true, true, true];
+    $('status').textContent = '전송 중...';
+    try {
+      const r = await window.api.send(finalText, targets);
+      const fail = Object.entries(r).filter(([, ok]) => !ok).map(([n]) => n);
+      $('status').textContent = fail.length ? `일부 실패: ${fail.join(', ')}` : '전송 완료 ✔';
+      if (!fail.length) promptEl.value = '';
+    } catch (e) {
+      $('status').textContent = '전송 오류';
+    }
+    promptEl.focus();
+  }
+
   $('send').onclick = go;
+  $('notepad-btn').onclick = () => window.api.toggleNotepad();
   $('new').onclick = () => window.api.newChat();
-  $('reset').onclick = async () => { await window.api.resetLayout(); $('status').textContent = '3분할로 복귀했습니다'; };
-  $('move').onclick = async () => { await window.api.moveMonitor(); $('status').textContent = '모니터로 이동했습니다'; };
+  $('reset').onclick = async () => { await window.api.resetLayout(); };
+  $('move').onclick = async () => { await window.api.moveMonitor(); };
   $('min').onclick = async () => { await window.api.minimizeAll(); };
   $('close').onclick = async () => { await window.api.closeAll(); };
-  $('prompt').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); go(); }
-  });
+  $('explorer').onclick = () => {
+    if (window.api.openExplorer) window.api.openExplorer();
+  };
+
+  // 메모장/그림판에서 전달받은 내용 자동 삽입
+  if (window.api.onSetPrompt) {
+    window.api.onSetPrompt((text) => {
+      promptEl.value = text;
+      promptEl.focus();
+    });
+  }
+
+  // 시작 시 데이터 로드
+  initData();
 </script>
 </body>
 </html>
+
