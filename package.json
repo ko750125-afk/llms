@@ -15,7 +15,7 @@
   "build": {
     "appId": "com.llm.tripleview",
     "productName": "LLM Triple View",
-    "directories": { "output": "dist" },
+    "directories": { "output": "release" },
     "files": ["main.js", "preload.js", "preload-notepad.js", "preload-settings.js", "bar.html", "notepad.html", "settings.html", "package.json", "build/icon.png", "build/icon.ico"],
     "win": {
       "target": "nsis",
