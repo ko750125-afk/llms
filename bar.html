@@ -837,8 +837,34 @@
     });
   }
 
-  // 시작 시 데이터 로드
+  // 모니터 개수 감지 및 UI 동적 조정 (대책 1: 단일 모니터 시 A⇄B 자동 숨김 & 메모장 2칸 확장)
+  function updateMonitorUi(count) {
+    const isMulti = count > 1;
+    const moveBtn = $('move');
+    const notepadBtn = $('notepad-btn');
+    if (moveBtn) {
+      moveBtn.style.display = isMulti ? 'inline-flex' : 'none';
+    }
+    if (notepadBtn) {
+      notepadBtn.style.gridColumn = isMulti ? 'auto' : 'span 2';
+    }
+  }
+
+  async function initMonitorDetection() {
+    if (window.api.getMonitorCount) {
+      try {
+        const count = await window.api.getMonitorCount();
+        updateMonitorUi(count);
+      } catch {}
+    }
+    if (window.api.onMonitorChanged) {
+      window.api.onMonitorChanged((count) => updateMonitorUi(count));
+    }
+  }
+
+  // 시작 시 데이터 로드 및 모니터 감지
   initData();
+  initMonitorDetection();
 </script>
 </body>
 </html>

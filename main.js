@@ -313,6 +313,15 @@ app.whenReady().then(async () => {
     await closeChromeWindows().catch(() => {});
   });
 
+  // 모니터 연결/해제 시 프롬프트 바에 실시간 통지
+  const notifyMonitorCount = () => {
+    if (bar && !bar.isDestroyed()) {
+      bar.webContents.send('monitor-changed', screen.getAllDisplays().length);
+    }
+  };
+  screen.on('display-added', notifyMonitorCount);
+  screen.on('display-removed', notifyMonitorCount);
+
   if (!chrome) {
     bar.webContents.once('did-finish-load', () =>
       bar.webContents.executeJavaScript(`document.getElementById('status').textContent='Chrome(chrome.exe)을 찾지 못했습니다'`));
@@ -542,6 +551,10 @@ app.whenReady().then(async () => {
     const idx = all.findIndex(d => d.id === cur.id);
     await layoutOn(all[(idx + 1) % all.length]);
     return all.length;
+  });
+  // 현재 연결된 모니터 개수 반환 (단일 모니터 vs 듀얼 모니터 판별)
+  ipcMain.handle('get-monitor-count', () => {
+    return screen.getAllDisplays().length;
   });
   // 전체 최소화 (입력창 + 3개 LLM 창 함께 내리기)
   ipcMain.handle('minimize-all', async () => {

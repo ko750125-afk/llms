@@ -16,5 +16,7 @@ contextBridge.exposeInMainWorld('api', {
   getSkills: () => ipcRenderer.invoke('get-skills'),
   getSites: () => ipcRenderer.invoke('get-sites'),
   onSyncData: (callback) => ipcRenderer.on('sync-data', (_e, data) => callback(data)),
+  getMonitorCount: () => ipcRenderer.invoke('get-monitor-count'),
+  onMonitorChanged: (callback) => ipcRenderer.on('monitor-changed', (_e, count) => callback(count)),
 });
 
